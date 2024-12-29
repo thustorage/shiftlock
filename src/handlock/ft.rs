@@ -1,0 +1,2 @@
+//! Fault tolerance for Handlock.
+
