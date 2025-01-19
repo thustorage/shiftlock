@@ -1,0 +1,9 @@
+    AcqW.IA AcqW.NP AcqW.WP AcqW.WR AcqR.IA AcqR.WW Rel.IA Rel.NS
+5       NaN     NaN     NaN     NaN     NaN     NaN    NaN    NaN
+20      NaN     NaN     NaN     NaN     NaN     NaN    NaN    NaN
+40      NaN     NaN     NaN     NaN     NaN     NaN    NaN    NaN
+80      NaN     NaN     NaN     NaN     NaN     NaN    NaN    NaN
+120     NaN     NaN     NaN     NaN     NaN     NaN    NaN    NaN
+160     NaN     NaN     NaN     NaN     NaN     NaN    NaN    NaN
+200     NaN     NaN     NaN     NaN     NaN     NaN    NaN    NaN
+240     NaN     NaN     NaN     NaN     NaN     NaN    NaN    NaN

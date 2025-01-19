@@ -1,0 +1,59 @@
+[package]
+name = "handlock"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+moka = { version = "0.12", features = ["sync"] }
+bitvec = "1.0.1"
+clap = { version = "4.5", features = ["derive"] }
+lazy_static = "1.4.0"
+memcache = "0.18"
+mini-moka = "0.10.3"
+paste = "1.0.15"
+quanta = "0.12.3"
+rand = "0.8.5"
+rrddmma = "0.7.3"
+core_affinity = "0.8.1"
+thiserror = "2.0"
+libc = "0.2"
+serde = "1.0"
+serde_json = "1.0.133"
+strum = { version = "0.26.3", features = ["derive"] }
+rand_distr = "0.4.3"
+tokio = { version = "1.42.0", features = ["full"] }
+redlock = "2.0"
+redis = "0.27.6"
+anyhow = "1.0.94"
+rand_chacha = "0.3.1"
+fred = "10.0"
+futures = "0.3.31"
+
+[features]
+timed = []
+custcwt = []
+legacy_recovery = []
+recovery = []
+
+# [profile.release]
+# debug = true
+
+[[bin]]
+name = "server"
+path = "src/bin/server.rs"
+
+[[bin]]
+name = "client"
+path = "src/bin/client.rs"
+
+[[bin]]
+name = "client-fallible"
+path = "src/bin/client_fallible.rs"
+
+[[bin]]
+name = "client-redis"
+path = "src/bin/client_redis.rs"
+
+[[bin]]
+name = "zero"
+path = "src/bin/zero.rs"

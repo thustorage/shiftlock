@@ -1,0 +1,5 @@
+          AcqW.IA AcqW.NP+WP+WR/RT AcqR.IA AcqR.WW/RT Rel.IA Rel.NS
+ShiftLock     NaN              NaN     NaN        NaN    NaN    NaN
+Cas           NaN              NaN     NaN        NaN    NaN    NaN
+CasNB         NaN              NaN     NaN        NaN    NaN    NaN
+Dslr          NaN              NaN     NaN        NaN    NaN    NaN
