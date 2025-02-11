@@ -48,9 +48,6 @@ If you want to reuse ShiftLock's code, the first thing you need to do is to run 
 cargo run --bin shiftlock
 ```
 
-Do not be confused: `shiftlock` is the name of ShiftLock during its development.
-We plan to change it to ShiftLock to reduce confusion, but only after FAST'25 AE. In other words, please wait until February, 2025.
-
 After you successfully run `main.rs`, we recommend that you take a quick look of the code in it, especially about how we accept cmdline arguments with `clap` and how we implement `worker`.
 Other exectuables use almost the same techniques.
 
@@ -146,9 +143,6 @@ They have the following functionalities:
 
 The `scripts/utils/run_once.sh` provides a bash function that reduces some pains by automatically running and stopping a server with tmux.
 You may refer to the AE scripts for how to using it.
-
-Currently, you will notice that it is hard to reuse the scripts because **there are many hardcoded absolute paths in them**.
-Again, we plan to improve them, but not before FAST'25 AE finishes.
 
 ### Traces
 

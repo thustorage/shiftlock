@@ -47,12 +47,15 @@ See the following checklist:
 1. Find some nodes that are connected by Infiniband network and Ethernet. _RoCE currently does not work._
 2. Ensure they have the same version of Rust and glibc.
 3. Pick a server node. All scripts must be run on it.
-4. Clone the repository to the same paths on all nodes and compile them (`cargo build --release`). You may use NFS, but pay attention to write permissions.
+4. Clone the repository (CLONE THE SUBMODULES!) to the same paths on all nodes and compile them (`cargo build --release`). You may use NFS, but pay attention to write permissions.
 5. Ensure password-free SSH from server to all clients.
 6. Go to `scripts/utils/set-nodes.sh`. Modify the comma-separated IP list to those of your _clients_ (EXCLUDING SERVER!). Ethernet interface IP is OK.
 7. Ensure your RDMA NICs are all `mlx5_0`.
    - If they are not `mlx5_0` but still the same across the entire cluster, please search and replace this string in the entire repository.
    - Otherwise, it will be much more troublesome. Briefly speaking, you need to pass an `--dev` option to all server and client executables and modify `run-counters.sh`.
+8. Run `scripts/distribute-traces.sh`.
+
+Please file an issue if this does not work. Thank you very much.
 
 ### Run all experiments
 
