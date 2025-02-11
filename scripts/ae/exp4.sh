@@ -1,6 +1,6 @@
 #!/bin/bash
 # Experiment 4: Distributed Tansactions.
-# - Figure 7: Performance of evaluated lock schemes under distributed transaction benchmarks.
+# - Figure 10: Performance of evaluated lock schemes under distributed transaction benchmarks.
 #
 # Estimated run time: ~10min
 
@@ -11,7 +11,7 @@ mkdir -p $SCRIPT_DIR/../../data/exp4
 rm -rf $SCRIPT_DIR/../../data/exp4/*
 cargo build --release --workspace --quiet
 
-LOCKS=(Mcs Handlock Cas Dslr Drtm Rmarw Rpc)
+LOCKS=(Mcs ShiftLock Cas Dslr Drtm Rmarw Rpc)
 WORKLOADS=(tatp tpcc-h)
 
 TIME=5
@@ -20,7 +20,7 @@ TIME=5
 for wl in ${WORKLOADS[@]}; do
     for lock in ${LOCKS[@]}; do
         $SCRIPT_DIR/../utils/kill.sh    
-        workload="trace:/home/gaoj/handlock-trace/$wl.csv:$TIME"
+        workload="trace:$SCRIPT_DIR/../../trace-dist/$wl.csv:$TIME"
         echo "Running $lock with $wl..."
 
         run_once "$SCRIPT_DIR/../run-basic.sh 10.0.2.110:31850 $lock $workload"

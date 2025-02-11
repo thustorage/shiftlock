@@ -19,9 +19,9 @@ echo "Lock:     $LOCK"
 echo "Workload: $WORKLOAD"
 
 SCRIPT_DIR=$(dirname $(readlink -f "$0"))
-HANDLOCK_NODES=$($SCRIPT_DIR/utils/set-nodes.sh)
+SHIFTLOCK_NODES=$($SCRIPT_DIR/utils/set-nodes.sh)
 
 $SCRIPT_DIR/../target/release/zero --server $1
 
-pdsh -w "ssh:$HANDLOCK_NODES" "rm -f /home/gaoj/results/output.txt"
-pdsh -w "ssh:$HANDLOCK_NODES" "/home/gaoj/handlock/target/release/client-fallible --server $SERVER_URI --nthreads 48 --lock $LOCK --workload $WORKLOAD --failprob $FAILPROB"
+pdsh -w "ssh:$SHIFTLOCK_NODES" "rm -f $SCRIPT_DIR/../results/output.txt"
+pdsh -w "ssh:$SHIFTLOCK_NODES" "$SCRIPT_DIR/../target/release/client-fallible --server $SERVER_URI --nthreads 48 --lock $LOCK --workload $WORKLOAD --failprob $FAILPROB"

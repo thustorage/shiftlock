@@ -1,6 +1,6 @@
 #!/bin/bash
 # Experiment 2: Microbenchmark, with various lock count.
-# - Figure 5: Goodputs of locks with different lock counts.
+# - Figure 7: Goodputs of locks with different lock counts.
 #
 # Estimated run time: ~25min
 
@@ -12,7 +12,7 @@ rm -rf $SCRIPT_DIR/../../data/exp2/*
 cargo build --release --workspace --quiet
 
 SKEWNESS=(zipf)
-LOCKS=(Mcs Handlock Cas Dslr Drtm Rmarw Rpc)
+LOCKS=(Mcs ShiftLock Cas Dslr Drtm Rmarw Rpc)
 NUMS=(1000 3162 10000 31623 100000 316228 1000000 3162278 10000000)
 
 TIME=10

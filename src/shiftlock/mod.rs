@@ -1,4 +1,4 @@
-//! Handlock implementation.
+//! ShiftLock implementation.
 
 use std::ptr::NonNull;
 use std::{fmt, hint, mem, ptr};
@@ -17,12 +17,10 @@ use ahcache::NodeDct;
 
 pub mod consrec;
 
-mod ft;
-
 #[allow(unused)]
 static DEBUG: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
-/// Handlock data structure.
+/// ShiftLock data structure.
 ///
 /// | Field     | LSB | Len | Description                     |
 /// | --------- | --: | --: | ------------------------------- |
@@ -34,11 +32,11 @@ static DEBUG: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new
 /// | rel_cnt   |  64 |  64 | Lock release count.             |
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[repr(align(16))]
-pub struct HandlockEntry(bv::BitArr!(for 128));
+pub struct ShiftLockEntry(bv::BitArr!(for 128));
 
-impl_lock_basic_methods!(HandlockEntry, 128);
+impl_lock_basic_methods!(ShiftLockEntry, 128);
 
-impl HandlockEntry {
+impl ShiftLockEntry {
     define_field_accessor!(mode, u8, 0..1, WITH_MASK);
     define_field_accessor!(rdr_cnt, u32, 1..24, WITH_MASK);
     define_field_accessor!(tail_node, u16, 24..40, WITH_MASK);
@@ -48,7 +46,7 @@ impl HandlockEntry {
     define_field_accessor!(rel_cnt, u64, 64..128);
 }
 
-const ENTIRE_BYTES: usize = mem::size_of::<HandlockEntry>();
+const ENTIRE_BYTES: usize = mem::size_of::<ShiftLockEntry>();
 const HALF_BYTES: usize = ENTIRE_BYTES / 2;
 
 const NOTI_BUF_OFFSET: usize = ENTIRE_BYTES + mem::size_of::<Notification>() * 2;
@@ -60,7 +58,7 @@ pub const MODE_CHANGE_THRESHOLD: u32 = 16;
 
 #[cfg(feature = "custcwt")]
 pub const MODE_CHANGE_THRESHOLD: u32 = {
-    let thres_str = std::option_env!("HANDLOCK_CONSWRT_THRESHOLD");
+    let thres_str = std::option_env!("SHIFTLOCK_CONSWRT_THRESHOLD");
     match thres_str {
         Some(s) => {
             let mut thres = 0;
@@ -75,9 +73,9 @@ pub const MODE_CHANGE_THRESHOLD: u32 = {
     }
 };
 
-impl fmt::Debug for HandlockEntry {
+impl fmt::Debug for ShiftLockEntry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("HandlockEntry")
+        f.debug_struct("ShiftLockEntry")
             .field("mode", &self.mode())
             .field("rdr_cnt", &self.rdr_cnt())
             .field("tail_node", &self.tail_node())
@@ -87,11 +85,11 @@ impl fmt::Debug for HandlockEntry {
     }
 }
 
-impl fmt::Display for HandlockEntry {
+impl fmt::Display for ShiftLockEntry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "HandlockEntry(major={:#016x}, rel_cnt={:#016x})",
+            "ShiftLockEntry(major={:#016x}, rel_cnt={:#016x})",
             self.major(),
             self.rel_cnt()
         )
@@ -102,9 +100,9 @@ impl fmt::Display for HandlockEntry {
 use std::sync::atomic::{AtomicU64, Ordering};
 static ERA_LOC: AtomicU64 = AtomicU64::new(0);
 
-/// Remote Handlock instance.
+/// Remote ShiftLock instance.
 #[derive(Debug)]
-pub struct Handlock<'a> {
+pub struct ShiftLock<'a> {
     /// Local node ID. Currently we use the LID.
     id: u16,
 
@@ -117,7 +115,7 @@ pub struct Handlock<'a> {
 
 /// Lock acquisition policy.
 #[derive(Debug, Clone, Copy)]
-pub struct HandlockAcquirePolicy {
+pub struct ShiftLockAcquirePolicy {
     /// Whether to wait when a remote poll returns NotReady.
     /// Unit: nanos.
     pub remote_wait: Option<u64>,
@@ -142,11 +140,11 @@ enum LockType {
     Shared,
 }
 
-/// An acquired Handlock instance.
+/// An acquired ShiftLock instance.
 #[derive(Debug)]
-pub struct HandlockGuard<'a> {
+pub struct ShiftLockGuard<'a> {
     /// The original lock.
-    lock: Handlock<'a>,
+    lock: ShiftLock<'a>,
 
     /// Lock type.
     ty: LockType,
@@ -155,7 +153,7 @@ pub struct HandlockGuard<'a> {
     mode: u8,
 }
 
-impl HandlockGuard<'_> {
+impl ShiftLockGuard<'_> {
     /// Return `true` if this is an exclusive lock guard.
     #[inline(always)]
     pub fn is_exclusive(&self) -> bool {
@@ -175,7 +173,7 @@ enum LockError {
     Retry,
 }
 
-/// Blocking methods of HandLock should return this type as they must handle client failures.
+/// Blocking methods of ShiftLock should return this type as they must handle client failures.
 /// i.e., failure recovery.
 type WaitResult<T> = Result<T, LockError>;
 
@@ -194,7 +192,7 @@ pub fn current_nanos() -> u64 {
         .as_nanos() as u64
 }
 
-impl<'a> Handlock<'a> {
+impl<'a> ShiftLock<'a> {
     /// Poll the DCT SRQ for notifications.
     /// Return an optional notification from predecessor and an optional notification from successor.
     #[inline(always)]
@@ -256,7 +254,7 @@ impl<'a> Handlock<'a> {
         dct: &Dct,
         expected: u64,
         mut prev_rel_cnt: u64,
-        policy: HandlockAcquirePolicy,
+        policy: ShiftLockAcquirePolicy,
     ) -> WaitResult<Option<NodeDct>> {
         timing::begin_time_op(TimeItem::AcqWaitReadersOrBackoff);
 
@@ -365,7 +363,7 @@ impl<'a> Handlock<'a> {
         qp.scq().poll_one_blocking_consumed();
 
         // Verification: if I failed, then someone must have successed.
-        let entry = unsafe { ptr::read(local_rd_buf.addr() as *const HandlockEntry) };
+        let entry = unsafe { ptr::read(local_rd_buf.addr() as *const ShiftLockEntry) };
         if entry.rel_cnt() != cur_rel_cnt {
             debug_assert!(entry.rel_cnt().wrapping_sub(cur_rel_cnt) >= RELCNT_LEAP);
         }
@@ -386,7 +384,7 @@ impl<'a> Handlock<'a> {
                 .expect("failed to read lock entry");
             qp.scq().poll_one_blocking_consumed();
 
-            let entry = unsafe { ptr::read(self.buf.addr() as *const HandlockEntry) };
+            let entry = unsafe { ptr::read(self.buf.addr() as *const ShiftLockEntry) };
             if entry.rel_cnt() != cur_rel_cnt {
                 break;
             }
@@ -452,17 +450,17 @@ impl<'a> Handlock<'a> {
         self,
         qp: &Qp,
         dct: &Dct,
-        policy: HandlockAcquirePolicy,
-    ) -> Result<HandlockGuard<'a>, Self> {
+        policy: ShiftLockAcquirePolicy,
+    ) -> Result<ShiftLockGuard<'a>, Self> {
         // Zero the local buffer just in case.
         // SAFETY: buffer pointer validity verified during creation.
         unsafe { *(self.buf.addr() as *mut u128) = 0 };
         let local_rd_buf = self.buf.slice_by_range(0..ENTIRE_BYTES).unwrap();
 
-        let mask = [mask_of!(HandlockEntry: rdr_cnt, tail_node, tail_dct), 0];
+        let mask = [mask_of!(ShiftLockEntry: rdr_cnt, tail_node, tail_dct), 0];
         let compare = [0, 0];
         let swap = [
-            bit_repr_of!(HandlockEntry: {
+            bit_repr_of!(ShiftLockEntry: {
                 tail_node: self.id,
                 tail_dct: dct.dct_num(),
             }),
@@ -487,10 +485,10 @@ impl<'a> Handlock<'a> {
             // Check if the CAS was successful. If yes, wait for readers and acquire the lock.
             // SAFETY: buffer pointer validity verified during creation.
             unsafe { fix_endian::<ENTIRE_BYTES>(local_rd_buf.addr()) };
-            let entry = unsafe { ptr::read(self.buf.addr() as *const HandlockEntry) };
+            let entry = unsafe { ptr::read(self.buf.addr() as *const ShiftLockEntry) };
 
             if entry.tail_node() == 0 && entry.tail_dct() == 0 && entry.rdr_cnt() == 0 {
-                return Ok(HandlockGuard {
+                return Ok(ShiftLockGuard {
                     lock: self,
                     ty: LockType::Exclusive {
                         cons_wrt_cnt: 0,
@@ -510,11 +508,11 @@ impl<'a> Handlock<'a> {
     }
 }
 
-impl<'a> Handlock<'a> {
+impl<'a> ShiftLock<'a> {
     /// Create a new unacquired lock instance.
     pub fn new(id: u16, buf: MrSlice<'a>, remote: MrRemote) -> Self {
         // Remote lock pointer validity.
-        debug_assert!(remote.addr % mem::align_of::<HandlockEntry>() as u64 == 0);
+        debug_assert!(remote.addr % mem::align_of::<ShiftLockEntry>() as u64 == 0);
         debug_assert_eq!(remote.len, ENTIRE_BYTES);
 
         // Local buffer validity.
@@ -566,8 +564,8 @@ impl<'a> Handlock<'a> {
         qp: &Qp,
         dci: &mut Qp,
         dct: &Dct,
-        policy: HandlockAcquirePolicy,
-    ) -> Option<HandlockGuard<'a>> {
+        policy: ShiftLockAcquirePolicy,
+    ) -> Option<ShiftLockGuard<'a>> {
         // Before all, try to trivially acquire the lock to improve some performance when contention
         // is low but not very low.
         self = match self.acquire_ex_trivial(qp, dct, policy) {
@@ -586,9 +584,9 @@ impl<'a> Handlock<'a> {
         // - Does not touch `mode`, `rdr_cnt`, and `rel_cnt`; these value will determine whether and how I
         //   should synchronize with the concurrent readers.
         let compare_and_mask = [0, 0];
-        let swap_mask = [mask_of!(HandlockEntry: tail_node, tail_dct), 0];
+        let swap_mask = [mask_of!(ShiftLockEntry: tail_node, tail_dct), 0];
         let swap = [
-            bit_repr_of!(HandlockEntry: {
+            bit_repr_of!(ShiftLockEntry: {
                 tail_node: self.id,
                 tail_dct: dct.dct_num(),
             }),
@@ -615,7 +613,7 @@ impl<'a> Handlock<'a> {
 
         // SAFETY: buffer pointer validity verified during creation.
         unsafe { fix_endian::<ENTIRE_BYTES>(local_rd_buf.addr()) };
-        let mut entry = unsafe { ptr::read(local_rd_buf.addr() as *const HandlockEntry) };
+        let mut entry = unsafe { ptr::read(local_rd_buf.addr() as *const ShiftLockEntry) };
 
         // A successor may appear when I am waiting for the lock.
         let mut succ = None;
@@ -689,7 +687,7 @@ impl<'a> Handlock<'a> {
                             debug_assert!(cons_wrt_cnt != 0);
                             timing::zero_time_op(TimeItem::AcqWaitReadersOrBackoff);
 
-                            return Some(HandlockGuard {
+                            return Some(ShiftLockGuard {
                                 lock: self,
                                 ty: LockType::Exclusive {
                                     cons_wrt_cnt,
@@ -754,7 +752,7 @@ impl<'a> Handlock<'a> {
 
                         // Update the read value to `entry`.
                         // SAFETY: buffer pointer validity verified during creation.
-                        entry = unsafe { ptr::read(local_rd_buf.addr() as *const HandlockEntry) };
+                        entry = unsafe { ptr::read(local_rd_buf.addr() as *const ShiftLockEntry) };
 
                         // Check for `RelCnt` change. If it keeps unchanged for a long time, we must be observing a client failure.
                         if entry.rel_cnt() != prev_rel_cnt {
@@ -802,7 +800,7 @@ impl<'a> Handlock<'a> {
 
             // Fallback to the codepath of Situation 3.
             // SAFETY: buffer pointer validity verified during creation.
-            entry = unsafe { ptr::read(local_rd_buf.addr() as *const HandlockEntry) };
+            entry = unsafe { ptr::read(local_rd_buf.addr() as *const ShiftLockEntry) };
             debug_assert_eq!(entry.rel_cnt(), expected_rel_cnt);
 
             // Since the mode has changed, we must flip our mode.
@@ -832,7 +830,7 @@ impl<'a> Handlock<'a> {
             // Upon exit of the loop above, all readers entered the lock before me should have released the lock.
             // I can now safely acquire the lock.
             // SAFETY: buffer pointer validity verified during creation.
-            entry = unsafe { ptr::read(local_rd_buf.addr() as *const HandlockEntry) };
+            entry = unsafe { ptr::read(local_rd_buf.addr() as *const ShiftLockEntry) };
             debug_assert_eq!(entry.rel_cnt(), expected_rel_cnt);
 
             // Fallback to the codepath of Situation 3.
@@ -844,7 +842,7 @@ impl<'a> Handlock<'a> {
 
         // 3. If the predecessor is null and `rdr_cnt` is zero, then I am the only client currently trying to acquire
         //    the lock. I can happily enter my critical section.
-        Some(HandlockGuard {
+        Some(ShiftLockGuard {
             lock: self,
             ty: LockType::Exclusive {
                 cons_wrt_cnt: 0,
@@ -864,16 +862,16 @@ impl<'a> Handlock<'a> {
     pub async fn acquire_sh(
         self,
         qp: &Qp,
-        policy: HandlockAcquirePolicy,
-    ) -> Option<HandlockGuard<'a>> {
+        policy: ShiftLockAcquirePolicy,
+    ) -> Option<ShiftLockGuard<'a>> {
         // Zero the local buffer just in case.
         // SAFETY: buffer pointer validity verified during creation.
         unsafe { *(self.buf.addr() as *mut u128) = 0 };
 
         // Issue an ExtFetchAdd to the lock entry, increasing the reader count.
         let local_buf = self.buf.slice_by_range(0..ENTIRE_BYTES).unwrap();
-        let add_mask = [mask_of!(FAA, HandlockEntry: rdr_cnt), 0];
-        let add = [bit_repr_of!(HandlockEntry: { rdr_cnt: 1u64 }), 0];
+        let add_mask = [mask_of!(FAA, ShiftLockEntry: rdr_cnt), 0];
+        let add = [bit_repr_of!(ShiftLockEntry: { rdr_cnt: 1u64 }), 0];
 
         timing::begin_time_op(TimeItem::AcqInitialReaderFaa);
         // SAFETY: pointers are all from references and are therefore valid.
@@ -893,12 +891,12 @@ impl<'a> Handlock<'a> {
 
         // SAFETY: buffer pointer validity verified during creation.
         unsafe { fix_endian::<ENTIRE_BYTES>(local_buf.addr()) };
-        let mut entry = unsafe { ptr::read(self.buf.addr() as *const HandlockEntry) };
+        let mut entry = unsafe { ptr::read(self.buf.addr() as *const ShiftLockEntry) };
 
         // If the writer MCS queue is empty, I can just directly acquire the lock.
         if entry.tail_node() == 0 && entry.tail_dct() == 0 {
             timing::zero_time_op(TimeItem::AcqWaitWritersOrRetry);
-            return Some(HandlockGuard {
+            return Some(ShiftLockGuard {
                 lock: self,
                 ty: LockType::Shared,
                 mode: entry.mode(),
@@ -925,10 +923,10 @@ impl<'a> Handlock<'a> {
 
             // Check if the lock mode has changed.
             // SAFETY: buffer pointer validity verified during creation.
-            entry = unsafe { ptr::read(self.buf.addr() as *const HandlockEntry) };
+            entry = unsafe { ptr::read(self.buf.addr() as *const ShiftLockEntry) };
             if entry.mode() == expected_mode {
                 timing::end_time_op(TimeItem::AcqWaitWritersOrRetry);
-                return Some(HandlockGuard {
+                return Some(ShiftLockGuard {
                     lock: self,
                     ty: LockType::Shared,
                     mode: entry.mode(),
@@ -960,7 +958,7 @@ impl<'a> Handlock<'a> {
     }
 }
 
-impl<'a> HandlockGuard<'a> {
+impl<'a> ShiftLockGuard<'a> {
     /// Send a notification message to the successor writer.
     ///
     /// # Caveat
@@ -1017,17 +1015,17 @@ impl<'a> HandlockGuard<'a> {
             // This operation:
             // - Tries to zero `tail_node` and `tail_dct`.
             // - Flips the `mode` to enable pending readers to enter the lock.
-            let compare_mask = [mask_of!(HandlockEntry: tail_node, tail_dct), 0];
-            let swap_mask = [mask_of!(HandlockEntry: mode, tail_node, tail_dct), !0];
+            let compare_mask = [mask_of!(ShiftLockEntry: tail_node, tail_dct), 0];
+            let swap_mask = [mask_of!(ShiftLockEntry: mode, tail_node, tail_dct), !0];
             let compare = [
-                bit_repr_of!(HandlockEntry: {
+                bit_repr_of!(ShiftLockEntry: {
                     tail_node: self.lock.id,
                     tail_dct: dct.dct_num(),
                 }),
                 0,
             ];
             let swap = [
-                bit_repr_of!(HandlockEntry: { mode: self.mode ^ 1 }),
+                bit_repr_of!(ShiftLockEntry: { mode: self.mode ^ 1 }),
                 pred_rel_cnt.wrapping_add(1),
             ];
 
@@ -1053,7 +1051,7 @@ impl<'a> HandlockGuard<'a> {
 
             // SAFETY: buffer pointer validity verified during creation.
             unsafe { fix_endian::<ENTIRE_BYTES>(local_rd_buf.addr()) };
-            let entry = unsafe { ptr::read(local_rd_buf.addr() as *const HandlockEntry) };
+            let entry = unsafe { ptr::read(local_rd_buf.addr() as *const ShiftLockEntry) };
 
             // If the CAS succeeded, then there is no successor writer, and I can return.
             if entry.tail_node() == self.lock.id && entry.tail_dct() == dct.dct_num() {
@@ -1112,11 +1110,11 @@ impl<'a> HandlockGuard<'a> {
             //
             // Perform the CAS to flip the `mode` and increment the release count.
             // SAFETY: pointers are all from references and are therefore valid.
-            let compare_mask = [mask_of!(HandlockEntry: mode), 0];
-            let compare = [bit_repr_of!(HandlockEntry: { mode: self.mode }), 0];
-            let swap_mask = [mask_of!(HandlockEntry: mode), !0];
+            let compare_mask = [mask_of!(ShiftLockEntry: mode), 0];
+            let compare = [bit_repr_of!(ShiftLockEntry: { mode: self.mode }), 0];
+            let swap_mask = [mask_of!(ShiftLockEntry: mode), !0];
             let swap = [
-                bit_repr_of!(HandlockEntry: { mode: self.mode ^ 1 }),
+                bit_repr_of!(ShiftLockEntry: { mode: self.mode ^ 1 }),
                 pred_rel_cnt.wrapping_add(1),
             ];
 
@@ -1143,7 +1141,7 @@ impl<'a> HandlockGuard<'a> {
 
             // SAFETY: buffer pointer validity verified during creation.
             unsafe { fix_endian::<ENTIRE_BYTES>(local_rd_buf.addr()) };
-            let entry = unsafe { ptr::read(local_rd_buf.addr() as *const HandlockEntry) };
+            let entry = unsafe { ptr::read(local_rd_buf.addr() as *const ShiftLockEntry) };
 
             // Interrupted by a recovery, retry.
             if entry.mode() != self.mode {
@@ -1198,8 +1196,8 @@ impl<'a> HandlockGuard<'a> {
 
         // Issue an ExtFetchAdd to the lock entry, decreasing the reader count and increasing the release count.
         let local_rd_buf = self.lock.buf.slice_by_range(0..ENTIRE_BYTES).unwrap();
-        let add_mask = [mask_of!(FAA, HandlockEntry: rdr_cnt), 0];
-        let add = [mask_of!(HandlockEntry: rdr_cnt), 1];
+        let add_mask = [mask_of!(FAA, ShiftLockEntry: rdr_cnt), 0];
+        let add = [mask_of!(ShiftLockEntry: rdr_cnt), 1];
 
         timing::begin_time_op(TimeItem::RelInitialAtomic);
         // SAFETY: pointers are all from references and are therefore valid.
@@ -1219,15 +1217,15 @@ impl<'a> HandlockGuard<'a> {
 
         // SAFETY: buffer pointer validity verified during creation.
         unsafe { fix_endian::<ENTIRE_BYTES>(local_rd_buf.addr()) };
-        let entry = unsafe { ptr::read(local_rd_buf.addr() as *const HandlockEntry) };
+        let entry = unsafe { ptr::read(local_rd_buf.addr() as *const ShiftLockEntry) };
 
         debug_assert_eq!(entry.mode(), self.mode);
     }
 }
 
-impl<'a> HandlockGuard<'a> {
+impl<'a> ShiftLockGuard<'a> {
     /// Release the lock and return the original lock instance.
-    pub fn release(self, qp: &Qp, dci: &mut Qp, dct: &Dct) -> Handlock<'a> {
+    pub fn release(self, qp: &Qp, dci: &mut Qp, dct: &Dct) -> ShiftLock<'a> {
         match self.ty {
             LockType::Shared => self.release_sh(qp),
             _ => self.release_ex(qp, dci, dct),
@@ -1298,29 +1296,29 @@ mod tests {
     #[test]
     fn test_layout() {
         use std::mem::{align_of, size_of};
-        assert_eq!(size_of::<HandlockEntry>(), 16);
-        assert_eq!(align_of::<HandlockEntry>(), 16);
+        assert_eq!(size_of::<ShiftLockEntry>(), 16);
+        assert_eq!(align_of::<ShiftLockEntry>(), 16);
     }
 
     #[test]
     fn test_masks() {
-        assert_eq!(mask_of!(HandlockEntry: mode), 0b1);
+        assert_eq!(mask_of!(ShiftLockEntry: mode), 0b1);
         assert_eq!(
-            mask_of!(HandlockEntry: tail_node),
+            mask_of!(ShiftLockEntry: tail_node),
             0b1111_1111_1111_1111_0000_0000_0000_0000
         );
         assert_eq!(
-            mask_of!(HandlockEntry: mode, tail_node),
+            mask_of!(ShiftLockEntry: mode, tail_node),
             0b1111_1111_1111_1111_0000_0000_0000_0001
         );
         assert_eq!(
-            mask_of!(FAA, HandlockEntry: tail_node),
+            mask_of!(FAA, ShiftLockEntry: tail_node),
             0b1000_0000_0000_0000_0000_0000_0000_0000
         );
 
-        assert_eq!(bit_repr_of!(HandlockEntry: { mode: 1u64 }), 0b1);
+        assert_eq!(bit_repr_of!(ShiftLockEntry: { mode: 1u64 }), 0b1);
         assert_eq!(
-            bit_repr_of!(HandlockEntry: { tail_node: 0x1234u64 }),
+            bit_repr_of!(ShiftLockEntry: { tail_node: 0x1234u64 }),
             0x1234 << 16
         );
     }

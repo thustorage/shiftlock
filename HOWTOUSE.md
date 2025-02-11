@@ -2,7 +2,7 @@
 
 This file describes the structure of this repository and the functionalities of the individual files in it.
 
-If you want to reuse ShiftLock for your own purposes, then you may want to read this file. 
+If you want to reuse ShiftLock for your own purposes, then you may want to read this file.
 
 ## Directory structure
 
@@ -14,7 +14,7 @@ Only 3 subdirectories in this repository are important, and their structures are
 │   ├── app
 │   ├── baselines
 │   ├── bin
-│   ├── handlock
+│   ├── shiftlock
 │   ├── lib.rs
 │   ├── macros.rs
 │   ├── main.rs
@@ -28,9 +28,9 @@ Only 3 subdirectories in this repository are important, and their structures are
 └── traces
 ```
 
-* **src** accommodates the source code of ShiftLock and baselines.
-* **script** accommodates experiment script files.
-* **traces** accommodates traces used in evaluation, but be careful: files in it are NOT used directly!
+- **src** accommodates the source code of ShiftLock and baselines.
+- **script** accommodates experiment script files.
+- **traces** accommodates traces used in evaluation, but be careful: files in it are NOT used directly!
 
 ### Source code
 
@@ -45,10 +45,10 @@ It also serves as a hello-world example for AE reviewers.
 If you want to reuse ShiftLock's code, the first thing you need to do is to run this file:
 
 ```shell
-cargo run --bin handlock
+cargo run --bin shiftlock
 ```
 
-Do not be confused: `handlock` is the name of ShiftLock during its development.
+Do not be confused: `shiftlock` is the name of ShiftLock during its development.
 We plan to change it to ShiftLock to reduce confusion, but only after FAST'25 AE. In other words, please wait until February, 2025.
 
 After you successfully run `main.rs`, we recommend that you take a quick look of the code in it, especially about how we accept cmdline arguments with `clap` and how we implement `worker`.
@@ -56,20 +56,20 @@ Other exectuables use almost the same techniques.
 
 #### Implementation
 
-You can find ShiftLock's implementation in the `src/handlock` directory.
-Most implementation details lies in `src/handlock/mod.rs`, while some minor functionalities are implemented in `src/handlock/ahcache.rs` and `src/handlock/consrec.rs`.
+You can find ShiftLock's implementation in the `src/shiftlock` directory.
+Most implementation details lies in `src/shiftlock/mod.rs`, while some minor functionalities are implemented in `src/shiftlock/ahcache.rs` and `src/shiftlock/consrec.rs`.
 There are detailed comments describing what each module/struct/function will do (because Rust encourages us to do so), and we expect that you can grasp the essentials of the code quickly.
 
 We have prepared many baseline systems to compare them against ShiftLock.
 You may find them in the `src/baselines` directory.
 The files are named after the baselines:
 
-* `cas.rs`: CAS lock, with backoff strategy taken from [SMART (ASPLOS'24)](https://dl.acm.org/doi/10.1145/3617232.3624857).
-* `drtm.rs`: [DrTM (SOSP'15)](https://dl.acm.org/doi/10.1145/2815400.2815419).
-* `dslr.rs`: [DSLR (SIGMOD'18)](https://dl.acm.org/doi/10.1145/3183713.3196890). _We greatly simplified its implementation because we have extended atomics, which do not carry across field boundaries._
-* `mcs.rs`: MCS lock. [Here](https://dl.acm.org/doi/10.1145/103727.103729) is the paper authored by the namers of the lock.
-* `rma_rw.rs`: [RMA-RW (HPDC'16)](https://dl.acm.org/doi/10.1145/2907294.2907323). We translated the original C code into Rust.
-* `rpc.rs`: RPC lock.
+- `cas.rs`: CAS lock, with backoff strategy taken from [SMART (ASPLOS'24)](https://dl.acm.org/doi/10.1145/3617232.3624857).
+- `drtm.rs`: [DrTM (SOSP'15)](https://dl.acm.org/doi/10.1145/2815400.2815419).
+- `dslr.rs`: [DSLR (SIGMOD'18)](https://dl.acm.org/doi/10.1145/3183713.3196890). _We greatly simplified its implementation because we have extended atomics, which do not carry across field boundaries._
+- `mcs.rs`: MCS lock. [Here](https://dl.acm.org/doi/10.1145/103727.103729) is the paper authored by the namers of the lock.
+- `rma_rw.rs`: [RMA-RW (HPDC'16)](https://dl.acm.org/doi/10.1145/2907294.2907323). We translated the original C code into Rust.
+- `rpc.rs`: RPC lock.
 
 #### Testbed infrastructure
 
@@ -86,13 +86,13 @@ Server must be run before clients and never stops after launched, but you can ju
 
 The four clients each has its own purpose.
 
-* `client.rs`: Implements client functions to run all locks. Yes, each lock has its own function.
-               You might think: "_why is there so much repetition!?_", but this is our last resort after surrendering in a big battle with Rust's HRTBs.
-               Anyway, these functions are quite similar, so you should understand all of them after reading one of them, say `run_handlock`.
-               Please also pay attention to `parse_workload`: it defines how the client parses a string into a workload specification.
-* `client_fallible.rs`: Implements clients for ShiftLock and DSLR. However, to simulate failures, there is a chance that a client simply drops a lock without releasing it.
-* `client_redis.rs`: Implements SmallBank by communicating with Redis.
-* `zero.rs`: Zeroes the memory provided by the lock server. Useful when you want to run multiple clients sequentially but do not want to restart the server.
+- `client.rs`: Implements client functions to run all locks. Yes, each lock has its own function.
+  You might think: "_why is there so much repetition!?_", but this is our last resort after surrendering in a big battle with Rust's HRTBs.
+  Anyway, these functions are quite similar, so you should understand all of them after reading one of them, say `run_shiftlock`.
+  Please also pay attention to `parse_workload`: it defines how the client parses a string into a workload specification.
+- `client_fallible.rs`: Implements clients for ShiftLock and DSLR. However, to simulate failures, there is a chance that a client simply drops a lock without releasing it.
+- `client_redis.rs`: Implements SmallBank by communicating with Redis.
+- `zero.rs`: Zeroes the memory provided by the lock server. Useful when you want to run multiple clients sequentially but do not want to restart the server.
 
 It is worth noting that in `client.rs`, to simulate distributed transactions, we invoke some "applications" like:
 
@@ -137,12 +137,12 @@ cargo run --bin server --release
 
 They have the following functionalities:
 
-* `run-basic.sh`: Run the executable of `src/bin/client.rs`, using a microbenchmark or a trace file to evaluate a lock.
-* `run-counters.sh`: Run the executable of `src/bin/client.rs`, obtaining RNIC hardware counters before and after the run to count how many atomics/reads are there.
-* `run-fallible.sh`: Run the executable of `src/bin/client_fallible.rs`, using a microbenchmark to evaluate a fallible lock.
-* `run-nlocks.sh`: Run the executable of `src/bin/client.rs` with a configurable number of locks.
-* `run-nthreads.sh`: Run the executable of `src/bin/client.rs` with a configurable number of client threads. This and the previous script together serve to evaluate the scalability of locks.
-* `run-redis.sh`: Run the executable of `src/bin/client_redis.rs`. **This script also only runs clients; you must launch a Redis instance simultaneously!**
+- `run-basic.sh`: Run the executable of `src/bin/client.rs`, using a microbenchmark or a trace file to evaluate a lock.
+- `run-counters.sh`: Run the executable of `src/bin/client.rs`, obtaining RNIC hardware counters before and after the run to count how many atomics/reads are there.
+- `run-fallible.sh`: Run the executable of `src/bin/client_fallible.rs`, using a microbenchmark to evaluate a fallible lock.
+- `run-nlocks.sh`: Run the executable of `src/bin/client.rs` with a configurable number of locks.
+- `run-nthreads.sh`: Run the executable of `src/bin/client.rs` with a configurable number of client threads. This and the previous script together serve to evaluate the scalability of locks.
+- `run-redis.sh`: Run the executable of `src/bin/client_redis.rs`. **This script also only runs clients; you must launch a Redis instance simultaneously!**
 
 The `scripts/utils/run_once.sh` provides a bash function that reduces some pains by automatically running and stopping a server with tmux.
 You may refer to the AE scripts for how to using it.

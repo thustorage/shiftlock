@@ -8,9 +8,9 @@ use std::{
 
 use anyhow::Context as _;
 use clap::Parser;
-use handlock::{
+use shiftlock::{
     utils::{self, Timer, TimerOp},
-    Handlock, HandlockAcquirePolicy, HandlockEntry,
+    ShiftLock, ShiftLockAcquirePolicy, ShiftLockEntry,
 };
 use quanta::Instant;
 use rand::{Rng, SeedableRng};
@@ -21,7 +21,7 @@ use rrddmma::{prelude::*, wrap::RegisteredMem};
 /// Lock type.
 #[derive(strum::EnumString, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LockType {
-    Handlock,
+    ShiftLock,
     RedLock,
 }
 
@@ -50,7 +50,7 @@ pub struct Args {
     pub duration: u64,
 
     /// Lock type.
-    #[clap(short, long, default_value = "Handlock")]
+    #[clap(short, long, default_value = "ShiftLock")]
     pub lock: LockType,
 
     /// Backoff nanoseconds. 0 indicates busy retry.
@@ -250,9 +250,9 @@ fn rl_write_check(
 }
 
 #[derive(Debug)]
-struct HandlockMeta<'a> {
+struct ShiftLockMeta<'a> {
     id: u16,
-    policy: HandlockAcquirePolicy,
+    policy: ShiftLockAcquirePolicy,
 
     qp: &'a Qp,
     dci: &'a mut Qp,
@@ -268,7 +268,7 @@ const LOCK_RESERVE: usize = 256;
 /// Amalgamate.
 async fn hl_amalgamate(
     con: &mut redis::Connection,
-    meta: HandlockMeta<'_>,
+    meta: ShiftLockMeta<'_>,
     name0: &str,
     name1: &str,
 ) -> RedisResult<()> {
@@ -282,11 +282,11 @@ async fn hl_amalgamate(
     let remote0 = meta
         .remote
         .slice(
-            (uid0 + NUM_ACCOUNTS) * mem::size_of::<HandlockEntry>(),
-            mem::size_of::<HandlockEntry>(),
+            (uid0 + NUM_ACCOUNTS) * mem::size_of::<ShiftLockEntry>(),
+            mem::size_of::<ShiftLockEntry>(),
         )
         .unwrap();
-    let l0 = Handlock::new(meta.id, local0, remote0);
+    let l0 = ShiftLock::new(meta.id, local0, remote0);
     let g0 = l0
         .acquire_ex(meta.qp, meta.dci, meta.dct0, meta.policy)
         .await
@@ -296,11 +296,11 @@ async fn hl_amalgamate(
     let remote1 = meta
         .remote
         .slice(
-            uid1 * mem::size_of::<HandlockEntry>(),
-            mem::size_of::<HandlockEntry>(),
+            uid1 * mem::size_of::<ShiftLockEntry>(),
+            mem::size_of::<ShiftLockEntry>(),
         )
         .unwrap();
-    let l1 = Handlock::new(meta.id, local1, remote1);
+    let l1 = ShiftLock::new(meta.id, local1, remote1);
     let g1 = l1
         .acquire_ex(meta.qp, meta.dci, meta.dct1, meta.policy)
         .await
@@ -323,7 +323,7 @@ async fn hl_amalgamate(
 /// DepositChecking.
 async fn hl_deposit_checking(
     con: &mut redis::Connection,
-    meta: HandlockMeta<'_>,
+    meta: ShiftLockMeta<'_>,
     name: &str,
 ) -> RedisResult<()> {
     let amount = 2;
@@ -336,11 +336,11 @@ async fn hl_deposit_checking(
     let remote0 = meta
         .remote
         .slice(
-            (uid + NUM_ACCOUNTS) * mem::size_of::<HandlockEntry>(),
-            mem::size_of::<HandlockEntry>(),
+            (uid + NUM_ACCOUNTS) * mem::size_of::<ShiftLockEntry>(),
+            mem::size_of::<ShiftLockEntry>(),
         )
         .unwrap();
-    let l0 = Handlock::new(meta.id, local0, remote0);
+    let l0 = ShiftLock::new(meta.id, local0, remote0);
     let g0 = l0
         .acquire_ex(meta.qp, meta.dci, meta.dct0, meta.policy)
         .await
@@ -358,7 +358,7 @@ async fn hl_deposit_checking(
 /// SendPayment.
 async fn hl_send_payment(
     con: &mut redis::Connection,
-    meta: HandlockMeta<'_>,
+    meta: ShiftLockMeta<'_>,
     name0: &str,
     name1: &str,
 ) -> RedisResult<()> {
@@ -376,21 +376,21 @@ async fn hl_send_payment(
     let remote0 = meta
         .remote
         .slice(
-            (uid0 + NUM_ACCOUNTS) * mem::size_of::<HandlockEntry>(),
-            mem::size_of::<HandlockEntry>(),
+            (uid0 + NUM_ACCOUNTS) * mem::size_of::<ShiftLockEntry>(),
+            mem::size_of::<ShiftLockEntry>(),
         )
         .unwrap();
-    let l0 = Handlock::new(meta.id, local0, remote0);
+    let l0 = ShiftLock::new(meta.id, local0, remote0);
 
     let local1: MrSlice = meta.local.slice(LOCK_RESERVE, LOCK_RESERVE).unwrap();
     let remote1 = meta
         .remote
         .slice(
-            (uid1 + NUM_ACCOUNTS) * mem::size_of::<HandlockEntry>(),
-            mem::size_of::<HandlockEntry>(),
+            (uid1 + NUM_ACCOUNTS) * mem::size_of::<ShiftLockEntry>(),
+            mem::size_of::<ShiftLockEntry>(),
         )
         .unwrap();
-    let l1 = Handlock::new(meta.id, local1, remote1);
+    let l1 = ShiftLock::new(meta.id, local1, remote1);
 
     let (g0, g1) = if uid0 < uid1 {
         let g0 = l0
@@ -429,7 +429,7 @@ async fn hl_send_payment(
 /// TransactSavings.
 async fn hl_transact_savings(
     con: &mut redis::Connection,
-    meta: HandlockMeta<'_>,
+    meta: ShiftLockMeta<'_>,
     name: &str,
 ) -> RedisResult<()> {
     let amount = 20;
@@ -442,11 +442,11 @@ async fn hl_transact_savings(
     let remote0 = meta
         .remote
         .slice(
-            uid * mem::size_of::<HandlockEntry>(),
-            mem::size_of::<HandlockEntry>(),
+            uid * mem::size_of::<ShiftLockEntry>(),
+            mem::size_of::<ShiftLockEntry>(),
         )
         .unwrap();
-    let l0 = Handlock::new(meta.id, local0, remote0);
+    let l0 = ShiftLock::new(meta.id, local0, remote0);
     let g0 = l0
         .acquire_ex(meta.qp, meta.dci, meta.dct0, meta.policy)
         .await
@@ -464,7 +464,7 @@ async fn hl_transact_savings(
 /// WriteCheck.
 async fn hl_write_check(
     con: &mut redis::Connection,
-    meta: HandlockMeta<'_>,
+    meta: ShiftLockMeta<'_>,
     name: &str,
 ) -> RedisResult<()> {
     let amount = 5;
@@ -477,11 +477,11 @@ async fn hl_write_check(
     let remote0 = meta
         .remote
         .slice(
-            (uid + NUM_ACCOUNTS) * mem::size_of::<HandlockEntry>(),
-            mem::size_of::<HandlockEntry>(),
+            (uid + NUM_ACCOUNTS) * mem::size_of::<ShiftLockEntry>(),
+            mem::size_of::<ShiftLockEntry>(),
         )
         .unwrap();
-    let l0 = Handlock::new(meta.id, local0, remote0);
+    let l0 = ShiftLock::new(meta.id, local0, remote0);
     let g0 = l0
         .acquire_ex(meta.qp, meta.dci, meta.dct0, meta.policy)
         .await
@@ -593,10 +593,10 @@ struct NetArgs {
 }
 
 #[tokio::main(flavor = "current_thread")]
-async fn smallbank_handlock(
+async fn smallbank_shiftlock(
     mut con: redis::Connection,
     netargs: NetArgs,
-    policy: HandlockAcquirePolicy,
+    policy: ShiftLockAcquirePolicy,
     names: &[String],
     dur: Duration,
     all_timer: Arc<Mutex<Timer>>,
@@ -608,7 +608,7 @@ async fn smallbank_handlock(
     let dct = (0..2)
         .map(|i| {
             let dct = utils::make_dct_together_with(&qp, true);
-            Handlock::initiate_dct(&dct, mem.slice(i * LOCK_RESERVE, LOCK_RESERVE).unwrap())
+            ShiftLock::initiate_dct(&dct, mem.slice(i * LOCK_RESERVE, LOCK_RESERVE).unwrap())
                 .expect("cannot post initial DCT recvs");
             dct
         })
@@ -619,7 +619,7 @@ async fn smallbank_handlock(
     let start = Instant::now();
     let mut thpt = 0;
     while start.elapsed() < dur {
-        let meta = HandlockMeta {
+        let meta = ShiftLockMeta {
             id: node_id,
             policy,
             qp: &qp,
@@ -699,14 +699,14 @@ fn main() -> anyhow::Result<()> {
                 LockType::RedLock => {
                     smallbank_redlock(con, rl, &names, Duration::from_secs(duration), timer)
                 }
-                LockType::Handlock => {
-                    let policy = HandlockAcquirePolicy {
+                LockType::ShiftLock => {
+                    let policy = ShiftLockAcquirePolicy {
                         remote_wait: match args.backoff {
                             0 => None,
                             _ => Some(args.backoff),
                         },
                     };
-                    smallbank_handlock(
+                    smallbank_shiftlock(
                         con,
                         netargs,
                         policy,

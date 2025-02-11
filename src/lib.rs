@@ -2,10 +2,10 @@ mod macros;
 
 pub mod app;
 pub mod baselines;
-mod handlock;
+mod shiftlock;
 pub mod utils;
 
-pub use handlock::*;
+pub use shiftlock::*;
 pub use utils::*;
 
 pub const NTHREADS: usize = 8;

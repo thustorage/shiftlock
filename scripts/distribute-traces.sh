@@ -1,10 +1,10 @@
 #!/bin/bash
 
 SCRIPT_DIR=$(dirname $(readlink -f "$0"))
-HANDLOCK_NODES=$($SCRIPT_DIR/utils/set-nodes.sh)
+SHIFTLOCK_NODES=$($SCRIPT_DIR/utils/set-nodes.sh)
 
 IFS=','
-read -ra ADDRS <<< "$HANDLOCK_NODES"
+read -ra ADDRS <<< "$SHIFTLOCK_NODES"
 
 TRACES=("tatp" "tpcc" "tpcc-h")
 
@@ -14,9 +14,9 @@ for i in "${!ADDRS[@]}"; do
 
     echo $addr
 
-    pdsh -w "ssh:$addr" "mkdir -p /home/gaoj/handlock-trace"
+    pdsh -w "ssh:$addr" "mkdir -p $SCRIPT_DIR/../trace-dist"
     for trace in "${TRACES[@]}"; do
-        scp /home/gaoj/handlock/traces/h$j-$trace.csv gaoj@$addr:/home/gaoj/handlock-trace/$trace.csv
+        scp $SCRIPT_DIR/../traces/h$j-$trace.csv gaoj@$addr:$SCRIPT_DIR/../trace-dist/$trace.csv
     done
     echo
 done

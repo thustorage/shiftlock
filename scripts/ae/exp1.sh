@@ -1,7 +1,7 @@
 #!/bin/bash
 # Experiment 1: Microbenchmark, with various skewness and read/write ratios.
-# - Figure 3: Goodputs of locks under the microbenchmark.
-# - Figure 4: Latencies of locks under the microbenchmark.
+# - Figure 4: Goodputs of locks under the microbenchmark.
+# - Figure 5: Latencies of locks under the microbenchmark.
 #
 # Estimated run time: ~20min
 
@@ -12,7 +12,7 @@ mkdir -p $SCRIPT_DIR/../../data/exp1
 rm -rf $SCRIPT_DIR/../../data/exp1/*
 cargo build --release --workspace --quiet
 
-LOCKS=(Mcs Handlock Cas Dslr Drtm Rmarw Rpc)
+LOCKS=(Mcs ShiftLock Cas Dslr Drtm Rmarw Rpc)
 SKEWNESS=(zipf uniform)
 WR=(wi ri ro)
 

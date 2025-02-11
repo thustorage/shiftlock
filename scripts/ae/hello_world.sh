@@ -1,2 +1,2 @@
 #!/bin/bash
-cargo run --release --bin handlock
+cargo run --release --bin shiftlock

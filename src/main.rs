@@ -7,9 +7,9 @@ use std::thread;
 use std::time::Duration;
 
 use clap::Parser;
-use handlock::*;
 use quanta::Instant;
 use rrddmma::{ctrl::Connecter, prelude::*, wrap::RegisteredMem};
+use shiftlock::*;
 
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
@@ -36,14 +36,14 @@ async fn worker(
 
     const LEN: usize = 1 << 8;
     let mem = RegisteredMem::new(qp.pd(), LEN).expect("cannot register memory");
-    Handlock::initiate_dct(&dct, mem.as_slice()).expect("cannot post initial DCT recvs");
+    ShiftLock::initiate_dct(&dct, mem.as_slice()).expect("cannot post initial DCT recvs");
 
     let id = dci.port().unwrap().0.lid();
-    let mut lock = Handlock::new(id, mem.as_slice(), remote);
+    let mut lock = ShiftLock::new(id, mem.as_slice(), remote);
     let mut n = 0;
     barrier.wait();
 
-    let policy = HandlockAcquirePolicy {
+    let policy = ShiftLockAcquirePolicy {
         remote_wait: Some(1000),
     };
 

@@ -4,7 +4,7 @@ use std::sync::{mpsc, Arc};
 use std::{mem, ptr, thread};
 
 use core_affinity::CoreId;
-use handlock::*;
+use shiftlock::*;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::*,
@@ -12,7 +12,7 @@ use tokio::{
 };
 
 use clap::Parser;
-use handlock::utils::RemoteInfo;
+use shiftlock::utils::RemoteInfo;
 use rrddmma::{prelude::*, rdma::mr::Permission, wrap::RegisteredMem};
 
 mod huge_alloc {
@@ -118,7 +118,7 @@ struct Args {
     pub nthreads: usize,
 
     /// Lock entry size in bytes.
-    /// Default to 16 for Handlock.
+    /// Default to 16 for ShiftLock.
     #[clap(short, long, default_value = "16")]
     pub locksize: usize,
 
@@ -274,7 +274,7 @@ async fn rpc_handler(
                         let lock_addr = lock_id as *mut u64;
                         match one_sided.lock_size {
                             16 => {
-                                let lock_entry = unsafe { &*(lock_addr as *const HandlockEntry) };
+                                let lock_entry = unsafe { &*(lock_addr as *const ShiftLockEntry) };
                                 let remote = lbmr.slice_by_ptr(lock_addr as _, 16).unwrap();
 
                                 let cur_rel_cnt = lock_entry.rel_cnt();

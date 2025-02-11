@@ -20,41 +20,7 @@ This is because have already set up the required environment on the provided pla
 
 ## Evaluate the Artifact
 
-**To artifact reviewers:** please make sure you are run the following procedure on our provided platform.
-All commands are assumed to be run at the project directory (i.e., where this README file resides).
-In our provided AE platform, the project directory is `/home/gaoj/handlock`.
-
-> `handlock` is ShiftLock's original name in development.
-
-Please do not clone the repository to somewhere else.
-This is because many experiment scripts have fixed absolute paths in them.
-
-### Connect to our testbed
-
-Our testbed is behind an OpenVPN gateway.
-We have prepared an OpenVPN client profile for artifact reviewers on HotCRP.
-Please first download [OpenVPN Connect](https://openvpn.net/client/) (or other OpenVPN clients if you prefer), import the profile, and connect to it.
-
-> The OpenVPN profile will proxy `10.0.0.0/22`.
-
-After you successfully connect to our lab's VPN, please SSH to our testbed:
-
-```shell
-ssh gaoj@10.0.2.110
-```
-
-Please also find the password on HotCRP.
-**We highly recommend that you use Visual Studio Code to connect to the testbed.**
-
-After you successfully SSH-ed to the testbed, please navigate to the project directory:
-
-```shell
-cd /home/gaoj/handlock
-```
-
-**IMPORTANT:** Please use `w` to check if there are any concurrent users of the testbed.
-
-### Hello-world Example
+### Hello-world example
 
 To verify that everything is prepared, you can run a hello-world example that verifies ShiftLock's functionality, please run the following command:
 
@@ -71,7 +37,22 @@ Running for 10 seconds...
 OK: 8 threads: 738528 locks/s
 ```
 
-If you can see this output, then everything is OK, and you can start the AE procedure.
+If you can see this output, then everything is OK, and you can start running the artifact.
+
+### Cluster setup
+
+After you confirm that the hello-world example works, it is time to set up the cluster.
+See the following checklist:
+
+1. Find some nodes that are connected by Infiniband network and Ethernet. _RoCE currently does not work._
+2. Ensure they have the same version of Rust and glibc.
+3. Pick a server node. All scripts must be run on it.
+4. Clone the repository to the same paths on all nodes and compile them (`cargo build --release`). You may use NFS, but pay attention to write permissions.
+5. Ensure password-free SSH from server to all clients.
+6. Go to `scripts/utils/set-nodes.sh`. Modify the comma-separated IP list to those of your _clients_ (EXCLUDING SERVER!). Ethernet interface IP is OK.
+7. Ensure your RDMA NICs are all `mlx5_0`.
+   - If they are not `mlx5_0` but still the same across the entire cluster, please search and replace this string in the entire repository.
+   - Otherwise, it will be much more troublesome. Briefly speaking, you need to pass an `--dev` option to all server and client executables and modify `run-counters.sh`.
 
 ### Run all experiments
 

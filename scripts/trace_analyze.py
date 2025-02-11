@@ -4,7 +4,7 @@ import glob
 import sys
 from functools import reduce
 
-trace_path = '/home/gaoj/handlock/traces'
+trace_path = '$SCRIPT_DIR/../traces'
 
 
 def main(workload: str):

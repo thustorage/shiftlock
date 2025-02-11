@@ -37,7 +37,7 @@ const ENTIRE_BYTES: usize = mem::size_of::<RmaRwLockEntry>();
 const HALF_BYTES: usize = ENTIRE_BYTES / 2;
 const NOTI_BUF_OFFSET: usize = ENTIRE_BYTES + mem::size_of::<Notification>() * 2;
 
-const WRITE_THRESHOLD: u32 = crate::handlock::MODE_CHANGE_THRESHOLD;
+const WRITE_THRESHOLD: u32 = crate::shiftlock::MODE_CHANGE_THRESHOLD;
 const READER_THRESHOLD: u32 = 4000;
 
 /// Remote RMA-RW lock instance.

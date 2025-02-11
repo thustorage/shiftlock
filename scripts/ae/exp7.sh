@@ -1,6 +1,6 @@
 #!/bin/bash
 # Experiment 7: Parameter selection.
-# - Figure 9: Performance of ShiftLock with different maximum consecutive writer counts.
+# - Figure 12: Performance of ShiftLock with different maximum consecutive writer counts.
 #
 # Estimated run time: ~5min
 
@@ -15,14 +15,14 @@ TIME=10
 
 # Run experiments.
 for thres in ${THRESHOLDS[@]}; do
-    HANDLOCK_CONSWRT_THRESHOLD=$thres cargo build --release --workspace --quiet --features custcwt
-    workload="trace:/home/gaoj/handlock-trace/$wl.csv:$TIME"
+    SHIFTLOCK_CONSWRT_THRESHOLD=$thres cargo build --release --workspace --quiet --features custcwt
+    workload="trace:$SCRIPT_DIR/../../trace-dist/$wl.csv:$TIME"
     echo "Running conswrt_thres = $thres..."
 
-    run_once "$SCRIPT_DIR/../run-basic.sh 10.0.2.110:31850 Handlock micro:zipf,wi:$TIME"
+    run_once "$SCRIPT_DIR/../run-basic.sh 10.0.2.110:31850 ShiftLock micro:zipf,wi:$TIME"
 
     # Modify the output directory name
-    output_dir=$(ls $SCRIPT_DIR/../../data | grep Handlock)
+    output_dir=$(ls $SCRIPT_DIR/../../data | grep ShiftLock)
     mv $SCRIPT_DIR/../../data/$output_dir $SCRIPT_DIR/../../data/exp7/$thres
 done
 

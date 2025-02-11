@@ -12,7 +12,7 @@ source $SCRIPT_DIR/../utils/run_once.fn.sh
 mkdir -p $SCRIPT_DIR/../../data/exp1
 cargo build --release --workspace --quiet
 
-LOCK=${1:-"Handlock"}
+LOCK=${1:-"ShiftLock"}
 SKEWNESS=${2:-"uniform"}
 WR=${3:-"ri"}
 

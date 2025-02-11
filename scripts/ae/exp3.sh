@@ -11,7 +11,7 @@ mkdir -p $SCRIPT_DIR/../../data/exp3
 rm -rf $SCRIPT_DIR/../../data/exp3/*
 cargo build --release --workspace --quiet
 
-LOCKS=(Mcs Handlock Cas Dslr Drtm Rmarw)
+LOCKS=(Mcs ShiftLock Cas Dslr Drtm Rmarw)
 
 # Run experiments.
 for lock in ${LOCKS[@]}; do

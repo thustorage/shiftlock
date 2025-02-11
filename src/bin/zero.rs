@@ -3,7 +3,7 @@
 use std::{net::SocketAddr, ptr};
 
 use clap::Parser;
-use handlock::utils::*;
+use shiftlock::utils::*;
 use rrddmma::{prelude::*, wrap::RegisteredMem};
 
 #[derive(Debug, Parser)]

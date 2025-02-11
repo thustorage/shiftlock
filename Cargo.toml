@@ -1,5 +1,5 @@
 [package]
-name = "handlock"
+name = "shiftlock"
 version = "0.1.0"
 edition = "2021"
 
@@ -26,7 +26,6 @@ redlock = "2.0"
 redis = "0.27.6"
 anyhow = "1.0.94"
 rand_chacha = "0.3.1"
-fred = "10.0"
 futures = "0.3.31"
 
 [features]

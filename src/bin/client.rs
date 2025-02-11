@@ -9,7 +9,7 @@ use tokio::sync::Barrier;
 
 use clap::Parser;
 use core_affinity::CoreId;
-use handlock::{app::*, baselines::*, utils::*, *};
+use shiftlock::{app::*, baselines::*, utils::*, *};
 use quanta::Instant;
 use rand::prelude::*;
 use rrddmma::{prelude::*, wrap::RegisteredMem};
@@ -20,7 +20,7 @@ use crate::EXTRA_COUNT;
 /// Lock type.
 #[derive(strum::EnumString, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LockType {
-    Handlock,
+    ShiftLock,
     Cas,
     Mcs,
     Dslr,
@@ -45,7 +45,7 @@ pub struct Args {
     pub workload: String,
 
     /// Lock type.
-    #[clap(short, long, default_value = "Handlock")]
+    #[clap(short, long, default_value = "ShiftLock")]
     pub lock: LockType,
 
     /// Lock count.
@@ -130,9 +130,9 @@ const MAX_LOCKS_PER_TXN: usize = 16;
 const MAX_TX_TYPES: usize = 7;
 
 #[tokio::main(flavor = "current_thread")]
-async fn run_handlock(
+async fn run_shiftlock(
     netargs: NetArgs,
-    runargs: RunArgs<HandlockAcquirePolicy>,
+    runargs: RunArgs<ShiftLockAcquirePolicy>,
     barrier: Arc<Barrier>,
 ) -> u64 {
     const LOCK_RESERVE: usize = 256;
@@ -143,19 +143,19 @@ async fn run_handlock(
     let dct = (0..MAX_LOCKS_PER_TXN)
         .map(|i| {
             let dct = utils::make_dct_together_with(&qp, true);
-            Handlock::initiate_dct(&dct, mem.slice(i * LOCK_RESERVE, LOCK_RESERVE).unwrap())
+            ShiftLock::initiate_dct(&dct, mem.slice(i * LOCK_RESERVE, LOCK_RESERVE).unwrap())
                 .expect("cannot post initial DCT recvs");
             dct
         })
         .collect::<Vec<_>>();
     let node_id = qp.port().unwrap().0.lid();
 
-    let app_offset = (runargs.count + EXTRA_COUNT) as usize * mem::size_of::<HandlockEntry>();
+    let app_offset = (runargs.count + EXTRA_COUNT) as usize * mem::size_of::<ShiftLockEntry>();
     let app_offset = app_offset + (4096 - app_offset % 4096);
 
     if barrier.wait().await.is_leader() {
-        let era_loc = remote.addr + mem::size_of::<HandlockEntry>() as u64 * runargs.count;
-        Handlock::initiate_era(era_loc);
+        let era_loc = remote.addr + mem::size_of::<ShiftLockEntry>() as u64 * runargs.count;
+        ShiftLock::initiate_era(era_loc);
         println!("all threads ready, running...");
     }
 
@@ -171,11 +171,11 @@ async fn run_handlock(
                         (runargs.count - 1).min(rand::thread_rng().sample(zipf) as u64 - 1);
                     let remote_lock = remote
                         .slice(
-                            lock_idx as usize * mem::size_of::<HandlockEntry>(),
-                            mem::size_of::<HandlockEntry>(),
+                            lock_idx as usize * mem::size_of::<ShiftLockEntry>(),
+                            mem::size_of::<ShiftLockEntry>(),
                         )
                         .unwrap();
-                    let lock = Handlock::new(node_id, mem.as_slice(), remote_lock);
+                    let lock = ShiftLock::new(node_id, mem.as_slice(), remote_lock);
 
                     let shared = rand::thread_rng().gen_bool(read_ratio);
                     let guard = {
@@ -204,12 +204,12 @@ async fn run_handlock(
                     let local = mem.slice(j * LOCK_RESERVE, LOCK_RESERVE).unwrap();
                     let remote = remote
                         .slice(
-                            instr.id as usize * mem::size_of::<HandlockEntry>(),
-                            mem::size_of::<HandlockEntry>(),
+                            instr.id as usize * mem::size_of::<ShiftLockEntry>(),
+                            mem::size_of::<ShiftLockEntry>(),
                         )
                         .unwrap();
 
-                    let lock = Handlock::new(node_id, local, remote);
+                    let lock = ShiftLock::new(node_id, local, remote);
                     guards.push(
                         if instr.shared {
                             lock.acquire_sh(&qp, runargs.policy).await
@@ -1030,14 +1030,14 @@ fn main() {
         threads.push(thread::spawn(move || {
             core_affinity::set_for_current(CoreId { id: i });
             match args.lock {
-                LockType::Handlock => {
-                    let policy = HandlockAcquirePolicy {
+                LockType::ShiftLock => {
+                    let policy = ShiftLockAcquirePolicy {
                         remote_wait: match backoff {
                             0 => None,
                             _ => Some(backoff),
                         },
                     };
-                    let thpt = run_handlock(
+                    let thpt = run_shiftlock(
                         netargs,
                         RunArgs::new(i, n, policy, count, workload, stats),
                         barrier,
@@ -1131,12 +1131,12 @@ fn main() {
 
     if matches!(
         args.lock,
-        LockType::Cas | LockType::Dslr | LockType::Handlock
+        LockType::Cas | LockType::Dslr | LockType::ShiftLock
     ) {
         timing::report(out);
     }
 
-    if args.lock == LockType::Handlock {
+    if args.lock == LockType::ShiftLock {
         let conswrts = consrec::get();
         for (i, v) in conswrts.iter().enumerate().skip(1) {
             writeln!(out, "conswrt {}: {}", i, *v).unwrap();

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Experiment 8: Failure recovery.
-# - Figure 10: Performance of ShiftLock and DSLR under different client failure rates.
+# - Figure 13: Performance of ShiftLock and DSLR under different client failure rates.
 #
 # Estimated run time: ~3min
 
@@ -10,7 +10,7 @@ source $SCRIPT_DIR/../utils/run_once.fn.sh
 mkdir -p $SCRIPT_DIR/../../data/exp8
 rm -rf $SCRIPT_DIR/../../data/exp8/*
 
-LOCKS=(Handlock Dslr)
+LOCKS=(ShiftLock Dslr)
 FR=(0.00001 0.0001 0.001 0.01)
 TIME=10
 
